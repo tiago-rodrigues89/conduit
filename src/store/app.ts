@@ -874,6 +874,29 @@ export async function closePane(id: string, force = false): Promise<void> {
   activateTab(get().activeTabId, { pane: true });
 }
 
+/** Back to one terminal: keeps `id` (or the focused pane) and closes the other panes of its tab. */
+export async function unsplitTab(id = get().activeTabId): Promise<void> {
+  const s = get();
+  const rootId = rootOf(id);
+  const panes = panesOf(rootId);
+  if (panes.length < 2) return;
+  const keepId = panes.some((p) => p.id === id) && id !== rootId ? id : s.focusedPane[rootId] || id;
+  const keep = panes.find((p) => p.id === keepId) || panes[0];
+  const others = panes.filter((p) => p.id !== keep.id);
+  const live = others.filter((p) => p.status === 'connected').length;
+  if (live && s.settings.confirmClose) {
+    const ok = await confirm({
+      title: `Close the other ${others.length} pane${others.length === 1 ? '' : 's'}?`,
+      message: `Only the pane you are in stays open. ${live} running shell${live === 1 ? '' : 's'} will be closed.`,
+      confirmLabel: 'Close panes',
+      danger: true,
+    });
+    if (!ok) return;
+  }
+  for (const p of others) await closePane(p.id, true);
+  activateTab(keep.id, { pane: true });
+}
+
 export function reconnectTab(id: string) {
   const t = get().tabs.find((x) => x.id === id);
   if (!t || t.kind === 'home') return;

@@ -29,6 +29,7 @@ import {
   splitPane,
   toast,
   toggleZoomPane,
+  unsplitTab,
   chooseSidebarPanel,
   setStats,
   updateSettings,
@@ -112,6 +113,8 @@ function runMenuAction(action: string) {
     case 'split-down':
       if (tab?.kind !== 'terminal') return toast('info', 'Open a terminal tab first');
       return splitPane(tab.id, action === 'split-right' ? 'row' : 'col');
+    case 'unsplit':
+      return tab?.kind === 'terminal' && unsplitTab(tab.id);
     case 'zoom-pane':
       return tab?.kind === 'terminal' && toggleZoomPane(tab.id);
     case 'equalize-panes':

@@ -315,6 +315,7 @@ function buildMenu() {
         item('Select Pane Below', 'Cmd+Alt+Down', 'pane-down'),
         item('Maximize Pane', 'Cmd+Shift+Enter', 'zoom-pane'),
         item('Make Panes Equal Size', undefined, 'equalize-panes'),
+        item('Close Other Panes (Back to One)', 'Cmd+Alt+W', 'unsplit'),
         { type: 'separator' },
         item('Next Tab', 'Cmd+Shift+]', 'next-tab'),
         item('Previous Tab', 'Cmd+Shift+[', 'prev-tab'),

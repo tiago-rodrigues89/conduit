@@ -2,6 +2,10 @@
 
 Versions follow [semantic versioning](https://semver.org): new features raise the middle number, fixes the last one.
 
+## 1.7.0
+- Undo splits: “Back to One Pane” in the tab's right-click menu, the terminal's right-click menu and Window → Close Other Panes (⌥⌘W) keeps the pane you are in and closes the others
+- A × after each pane's name closes just that pane (3 panes → 2)
+
 ## 1.6.0
 - Custom themes (Settings → Appearance → Customize…): your own copy of any preset with a picture or gradient behind the text, every color editable (text, cursor, selection, app accent, all 16 terminal colors). The presets stay as they are
 - Pictures: fill, fit, center or tile, visibility and blur; HEIC pictures (e.g. the macOS wallpapers) are converted automatically

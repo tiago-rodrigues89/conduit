@@ -17,6 +17,7 @@ import {
   rootOf,
   rootTabs,
   splitPane,
+  unsplitTab,
   updateSettings,
   updateTab,
   useApp,
@@ -79,6 +80,7 @@ export function TabBar() {
               ? [
                   { id: 'split-right', label: 'Split Right' },
                   { id: 'split-down', label: 'Split Down' },
+                  ...(panesOf(tab.id).length > 1 ? [{ id: 'unsplit', label: `Back to One Pane (close ${panesOf(tab.id).length - 1} other${panesOf(tab.id).length > 2 ? 's' : ''})` }] : []),
                 ]
               : []),
             ...(tab.kind === 'terminal' && tab.mode === 'ssh'
@@ -97,6 +99,10 @@ export function TabBar() {
         return reconnectTab(tab.id);
       case 'duplicate':
         return duplicateTab(tab.id);
+      case 'unsplit': {
+        const focus = useApp.getState().focusedPane[tab.id] || tab.id;
+        return unsplitTab(panesOf(tab.id).some((p) => p.id === focus) ? focus : tab.id);
+      }
       case 'split-right':
       case 'split-down': {
         const focus = useApp.getState().focusedPane[tab.id] || tab.id;

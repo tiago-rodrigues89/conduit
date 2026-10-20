@@ -3564,3 +3564,25 @@ body.resizing-col * {
   margin: -4px 0 14px;
   font-size: 12px;
 }
+
+/* close button after the pane name */
+.pane-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin: 0 -4px 0 2px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-faint);
+  pointer-events: auto;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.pane-close:hover {
+  background: rgba(255, 107, 129, 0.2);
+  color: var(--danger);
+}

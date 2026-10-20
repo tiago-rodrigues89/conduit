@@ -31,6 +31,7 @@ import {
   splitPane,
   toast,
   toggleZoomPane,
+  unsplitTab,
   updateTab,
   useApp,
 } from '../store/app';
@@ -673,7 +674,12 @@ export function TerminalView({ tab, visible, focused, split, rect }: Props) {
         : { id: 'log-start', label: 'Log Output to File', enabled: t.status === 'connected' },
       ...(t.logFile ? [{ id: 'log-show', label: 'Show Log File in Finder' }] : []),
       { type: 'separator' },
-      ...(split ? [{ id: 'close-pane', label: 'Close Pane', accelerator: 'Cmd+W' }] : []),
+      ...(split
+        ? [
+            { id: 'close-pane', label: 'Close Pane', accelerator: 'Cmd+W' },
+            { id: 'unsplit', label: 'Close Other Panes (Back to One)' },
+          ]
+        : []),
       { id: 'close', label: 'Close Tab' },
     ]);
     switch (choice) {
@@ -726,6 +732,9 @@ export function TerminalView({ tab, visible, focused, split, rect }: Props) {
         break;
       case 'close-pane':
         closePane(t.id);
+        break;
+      case 'unsplit':
+        unsplitTab(t.id);
         break;
       case 'close':
         closeTab(t.paneOf || t.id);
@@ -810,6 +819,17 @@ export function TerminalView({ tab, visible, focused, split, rect }: Props) {
             {tab.color && <i style={{ background: tab.color }} />}
             {tab.title}
             {tab.status !== 'connected' && <span className="pane-label-state">{tab.status === 'connecting' ? 'connecting' : tab.status === 'error' ? 'failed' : 'closed'}</span>}
+            <button
+              className="pane-close"
+              title="Close this pane (⌘W)"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                closePane(tab.id);
+              }}
+            >
+              <X size={11} strokeWidth={2.5} />
+            </button>
           </div>
         )}
         {split && !focused && <div className="pane-dim" />}
