@@ -1,22 +1,33 @@
-// Builds Conduit.app. When a code signing identity named "Conduit Local
-// Signing" exists in the keychain, the app is signed with it: the signature
-// then stays the same across updates, so macOS remembers "Always Allow" for
-// the Conduit Safe Storage keychain item. Otherwise the build is signed ad hoc.
+// Builds Conduit.app and picks the best code signing identity in the keychain:
+//
+// 1. CONDUIT_SIGN_IDENTITY, if set
+// 2. "Developer ID Application: …" or "Apple Development: …" (free with an Apple ID in Xcode):
+//    these carry an Apple Team ID, so macOS remembers "Always Allow" for the
+//    Conduit Safe Storage keychain item across updates
+// 3. "Conduit Local Signing" (self-signed): a stable app identity, but without a
+//    Team ID macOS still asks once after each update
+// 4. otherwise ad hoc
 const { execFileSync, spawnSync } = require('child_process');
 
-const IDENTITY = process.env.CONDUIT_SIGN_IDENTITY || 'Conduit Local Signing';
-let identity = null;
+let out = '';
 try {
-  const out = execFileSync('security', ['find-identity', '-v', '-p', 'codesigning'], { encoding: 'utf8' });
-  if (out.includes(`"${IDENTITY}"`)) identity = IDENTITY;
+  out = execFileSync('security', ['find-identity', '-v', '-p', 'codesigning'], { encoding: 'utf8' });
 } catch {
   /* no keychain access: ad hoc */
 }
+const names = [...out.matchAll(/\d+\) [0-9A-F]{40} "([^"]+)"/g)].map((m) => m[1]);
+const pick =
+  process.env.CONDUIT_SIGN_IDENTITY ||
+  names.find((n) => n.startsWith('Developer ID Application:')) ||
+  names.find((n) => n.startsWith('Apple Development:')) ||
+  names.find((n) => n === 'Conduit Local Signing') ||
+  null;
+
 console.log(
-  identity
-    ? `Signing with "${identity}"`
-    : `No "${IDENTITY}" certificate found — signing ad hoc (macOS asks for keychain access again after each update)`
+  pick
+    ? `Signing with "${pick}"${/^(Developer ID|Apple Development)/.test(pick) ? '' : ' (no Team ID: macOS asks for keychain access once after each update)'}`
+    : 'No signing certificate found — signing ad hoc (macOS asks for keychain access after each update)'
 );
-const args = ['electron-builder', '--mac', '--arm64', ...(identity ? [`-c.mac.identity=${identity}`] : [])];
+const args = ['electron-builder', '--mac', '--arm64', ...(pick ? [`-c.mac.identity=${pick.replace(/^(Developer ID Application|Apple Development): /, '')}`] : [])];
 const res = spawnSync('npx', args, { stdio: 'inherit' });
 process.exit(res.status ?? 1);

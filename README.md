@@ -124,12 +124,18 @@ npm run icon       # regenerate build/icon.icns from build/icon.svg
 | ⇧⌘B | Broadcast input to all terminals |
 | ⌘, | Settings |
 
-## Keychain prompt ("Conduit wants to use … Conduit Safe Storage")
+## Keychain prompt ("Conduit wants to access … Conduit Safe Storage")
 
-Saved passwords are encrypted with a key kept in the macOS Keychain. macOS ties that key to the app's signature. The build is only signed ad hoc, so every update is a "new" app and macOS asks again.
+Saved passwords are encrypted with a key kept in the macOS Keychain. macOS checks two things before it hands that key to an app:
 
-- Click **Always Allow** (with your Mac login password) — it stays quiet until the next update.
-- To keep it quiet across updates, create a local signing certificate once: Keychain Access → Keychain Access menu → Certificate Assistant → *Create a Certificate…* → Name `Conduit Local Signing`, Identity Type *Self-Signed Root*, Certificate Type *Code Signing* → Create. Then `npm run install-app` signs with it automatically; click *Always Allow* one last time.
+1. **The app's identity** (its code signature). An ad-hoc signed build is a "new" app every time.
+2. **The keychain item's partition list.** For apps without an Apple **Team ID**, macOS records the exact fingerprint (cdhash) of each build, so every update is new to it.
+
+What that means for the prompt after an update:
+
+- **Ad hoc or the self-signed "Conduit Local Signing" certificate:** macOS asks once after every update. Click **Always Allow**. The local certificate fixes point 1 but cannot carry a Team ID.
+- **"Apple Development" certificate (free):** install Xcode, sign in with your Apple ID under Xcode → Settings → Accounts, then *Manage Certificates* → **+** → *Apple Development*. `npm run install-app` picks it up automatically. After one last *Always Allow* the prompt stays away across updates.
+- **"Developer ID Application" certificate** (paid Apple Developer Program): same effect, and you can also share notarized builds.
 
 ## Where things are stored
 
