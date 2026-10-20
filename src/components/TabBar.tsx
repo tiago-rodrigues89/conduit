@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Columns2, FolderTree, House, LoaderCircle, PanelLeft, Plus, Radio, Settings, SquareTerminal, X } from 'lucide-react';
 import { api } from '../lib/api';
+import { typeInfo } from '../lib/sessionTypes';
 import { dnd } from '../lib/dnd';
 import type { Tab, TerminalTab } from '../lib/types';
 import {
@@ -16,9 +17,13 @@ import {
   panesOf,
   reconnectTab,
   rootOf,
+  sessionById,
   rootTabs,
   splitPane,
   unsplitTab,
+  separatePanes,
+  canMoveIntoSplit,
+  moveTabIntoSplit,
   updateSettings,
   updateTab,
   useApp,
@@ -67,7 +72,59 @@ export function TabBar() {
   const sidebarVisible = useApp((s) => s.settings.sidebarVisible);
   const broadcast = useApp((s) => s.broadcast);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const [mergeTarget, setMergeTarget] = useState<string | null>(null);
   const dragging = useRef<string | null>(null);
+  // the tab shown before a press: dragging a tab must not switch away from it
+  const shownBefore = useRef<string | null>(null);
+  // hovering a tab for a moment while dragging switches to it
+  const spring = useRef<{ id: string; timer: ReturnType<typeof setTimeout> } | null>(null);
+
+  const stopSpring = () => {
+    if (spring.current) clearTimeout(spring.current.timer);
+    spring.current = null;
+  };
+  const resetDrag = () => {
+    setDropIndex(null);
+    setMergeTarget(null);
+    stopSpring();
+  };
+  /** What a drop on a tab does: merge into it (its middle) or reorder (its edges). */
+  const dropMode = (e: React.DragEvent, tab: Tab, i: number): { merge: boolean; index: number | null } | null => {
+    const d = dnd.get();
+    if (!d) return null;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const fx = (e.clientX - rect.left) / rect.width;
+    const canMerge =
+      tab.kind === 'terminal' &&
+      (d.kind === 'tab'
+        ? canMoveIntoSplit(d.id, tab.id)
+        : (() => {
+            const sess = sessionById(d.id);
+            return !!sess && typeInfo(sess.type).opens === 'terminal';
+          })());
+    if (canMerge && (d.kind === 'session' || (fx > 0.25 && fx < 0.75))) return { merge: true, index: null };
+    return { merge: false, index: d.kind === 'tab' ? (fx < 0.5 ? i : i + 1) : null };
+  };
+  const doDrop = (merge: string | null, index: number | null) => {
+    const d = dnd.get();
+    if (d && merge) {
+      // dropped on the middle of a tab: both side by side in that tab
+      activateTab(merge);
+      if (d.kind === 'tab') moveTabIntoSplit(d.id, besideIn(merge), 'row');
+      else openSession(d.id, { split: 'row', beside: besideIn(merge) });
+    } else if (d?.kind === 'tab' && index !== null) {
+      const from = tabs.findIndex((t) => t.id === d.id);
+      moveTab(d.id, from < index ? index - 1 : index);
+    }
+    resetDrag();
+    dnd.end();
+  };
+
+  /** The pane of a tab a dropped tab or session goes next to. */
+  const besideIn = (rootId: string) => {
+    const f = useApp.getState().focusedPane[rootId];
+    return f && panesOf(rootId).some((p) => p.id === f) ? f : rootId;
+  };
 
   const tabMenu = async (tab: Tab) => {
     const idx = tabs.findIndex((t) => t.id === tab.id);
@@ -81,7 +138,12 @@ export function TabBar() {
               ? [
                   { id: 'split-right', label: 'Split Right' },
                   { id: 'split-down', label: 'Split Down' },
-                  ...(panesOf(tab.id).length > 1 ? [{ id: 'unsplit', label: `Back to One Pane (close ${panesOf(tab.id).length - 1} other${panesOf(tab.id).length > 2 ? 's' : ''})` }] : []),
+                  ...(panesOf(tab.id).length > 1
+                    ? [
+                        { id: 'separate', label: 'Unsplit: Every Pane Back to Its Own Tab', accelerator: 'Cmd+Alt+U' },
+                        { id: 'unsplit', label: `Close Other Panes (keep the one you are in)`, accelerator: 'Cmd+Alt+W' },
+                      ]
+                    : []),
                 ]
               : []),
             ...(tab.kind === 'terminal' && tab.mode === 'ssh'
@@ -100,6 +162,8 @@ export function TabBar() {
         return reconnectTab(tab.id);
       case 'duplicate':
         return duplicateTab(tab.id);
+      case 'separate':
+        return separatePanes(besideIn(tab.id));
       case 'unsplit': {
         const focus = useApp.getState().focusedPane[tab.id] || tab.id;
         return unsplitTab(panesOf(tab.id).some((p) => p.id === focus) ? focus : tab.id);
@@ -140,16 +204,15 @@ export function TabBar() {
       <div
         className="tabs"
         onDragOver={(e) => {
-          if (!e.dataTransfer.types.includes(TAB_MIME)) return;
+          if (!dnd.get()) return;
           e.preventDefault();
         }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) resetDrag();
+        }}
         onDrop={(e) => {
-          const id = e.dataTransfer.getData(TAB_MIME);
-          if (id && dropIndex !== null) {
-            const from = tabs.findIndex((t) => t.id === id);
-            moveTab(id, from < dropIndex ? dropIndex - 1 : dropIndex);
-          }
-          setDropIndex(null);
+          e.preventDefault();
+          doDrop(mergeTarget, dropIndex);
         }}
       >
         {tabs.map((tab, i) => {
@@ -162,26 +225,45 @@ export function TabBar() {
               key={tab.id}
               className={`tab${tab.id === activeTabId ? ' active' : ''} status-${status}${dropIndex === i ? ' drop-before' : ''}${
                 dropIndex === tabs.length && i === tabs.length - 1 ? ' drop-after' : ''
-              }`}
+              }${mergeTarget === tab.id ? ' merge-target' : ''}`}
               draggable
               onDragStart={(e) => {
                 dragging.current = tab.id;
                 e.dataTransfer.setData(TAB_MIME, tab.id);
                 dnd.start({ kind: 'tab', id: tab.id });
                 e.dataTransfer.effectAllowed = 'move';
+                // stay on the tab you were looking at, so the dragged one can be dropped onto it
+                const before = shownBefore.current;
+                if (before && before !== tab.id && useApp.getState().tabs.some((t) => t.id === before)) activateTab(before);
               }}
               onDragEnd={() => {
                 dragging.current = null;
-                setDropIndex(null);
+                resetDrag();
                 dnd.end();
               }}
               onDragOver={(e) => {
-                if (!e.dataTransfer.types.includes(TAB_MIME)) return;
+                const mode = dropMode(e, tab, i);
+                if (!mode) return;
                 e.preventDefault();
-                const rect = e.currentTarget.getBoundingClientRect();
-                setDropIndex(e.clientX < rect.left + rect.width / 2 ? i : i + 1);
+                e.stopPropagation();
+                // the middle of a tab merges, its edges reorder
+                const merge = mode.merge ? tab.id : null;
+                if (mergeTarget !== merge) setMergeTarget(merge);
+                if (dropIndex !== mode.index) setDropIndex(mode.index);
+                if (tab.id !== activeTabId && spring.current?.id !== tab.id) {
+                  stopSpring();
+                  spring.current = { id: tab.id, timer: setTimeout(() => activateTab(tab.id), 650) };
+                }
+              }}
+              onDrop={(e) => {
+                const mode = dropMode(e, tab, i);
+                if (!mode) return;
+                e.preventDefault();
+                e.stopPropagation();
+                doDrop(mode.merge ? tab.id : null, mode.index);
               }}
               onMouseDown={(e) => {
+                shownBefore.current = useApp.getState().tabs.some((t) => t.id === activeTabId) ? activeTabId : null;
                 if (e.button === 0) activateTab(tab.id);
               }}
               onAuxClick={(e) => {

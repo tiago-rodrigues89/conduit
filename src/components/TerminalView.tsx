@@ -5,8 +5,7 @@ import { WebglAddon } from '@xterm/addon-webgl';
 import { SearchAddon } from '@xterm/addon-search';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
-import { ArrowDown, ArrowUp, CaseSensitive, Regex, WholeWord, X } from 'lucide-react';
-import type { Rect } from '../lib/panes';
+import { ArrowDown, ArrowUp, CaseSensitive, Regex, SquareArrowOutUpRight, WholeWord, X } from 'lucide-react';
 import { TermAutomation } from '../lib/automation';
 import { api } from '../lib/api';
 import { fontStack } from '../lib/fonts';
@@ -32,6 +31,8 @@ import {
   toast,
   toggleZoomPane,
   unsplitTab,
+  popOutPane,
+  separatePanes,
   updateTab,
   useApp,
 } from '../store/app';
@@ -83,11 +84,11 @@ interface Props {
   focused: boolean;
   /** the tab has several panes */
   split: boolean;
-  /** position inside the tab (fractions) */
-  rect: Rect;
+  /** where it is drawn (px, inside the views area) */
+  box: { left: number; top: number; width: number; height: number };
 }
 
-export function TerminalView({ tab, visible, focused, split, rect }: Props) {
+export function TerminalView({ tab, visible, focused, split, box }: Props) {
   const settings = useApp((s) => s.settings);
   const items = useApp((s) => s.items);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -632,7 +633,7 @@ export function TerminalView({ tab, visible, focused, split, rect }: Props) {
 
   useEffect(() => {
     if (visible) requestAnimationFrame(fit);
-  }, [visible, rect.x, rect.y, rect.w, rect.h]);
+  }, [visible, box.width, box.height]);
 
   useEffect(() => {
     if (!visible || !focused) return;
@@ -676,8 +677,11 @@ export function TerminalView({ tab, visible, focused, split, rect }: Props) {
       { type: 'separator' },
       ...(split
         ? [
+            { id: 'pop-out', label: 'Move Pane to Its Own Tab' },
+            { id: 'separate', label: 'Unsplit: Every Pane Back to Its Own Tab', accelerator: 'Cmd+Alt+U' },
+            { type: 'separator' as const },
             { id: 'close-pane', label: 'Close Pane', accelerator: 'Cmd+W' },
-            { id: 'unsplit', label: 'Close Other Panes (Back to One)' },
+            { id: 'unsplit', label: 'Close Other Panes', accelerator: 'Cmd+Alt+W' },
           ]
         : []),
       { id: 'close', label: 'Close Tab' },
@@ -736,6 +740,12 @@ export function TerminalView({ tab, visible, focused, split, rect }: Props) {
       case 'unsplit':
         unsplitTab(t.id);
         break;
+      case 'pop-out':
+        popOutPane(t.id);
+        break;
+      case 'separate':
+        separatePanes(t.id);
+        break;
       case 'close':
         closeTab(t.paneOf || t.id);
         break;
@@ -781,14 +791,7 @@ export function TerminalView({ tab, visible, focused, split, rect }: Props) {
   };
 
   const theme = getTheme(themeIdFor(tab, settings));
-  const GAP = 1;
-  const style: React.CSSProperties = {
-    display: visible ? 'block' : 'none',
-    left: `calc(${rect.x * 100}% + ${rect.x > 0 ? GAP : 0}px)`,
-    top: `calc(${rect.y * 100}% + ${rect.y > 0 ? GAP : 0}px)`,
-    width: `calc(${rect.w * 100}% - ${rect.x > 0 ? GAP : 0}px)`,
-    height: `calc(${rect.h * 100}% - ${rect.y > 0 ? GAP : 0}px)`,
-  };
+  const style: React.CSSProperties = { display: visible ? 'block' : 'none', ...box };
 
   return (
     <div className={`terminal-pane${split ? ' split' : ''}${focused ? ' focused' : ''}`} data-pane={tab.id} style={style} onMouseDown={() => !focused && activateTab(tab.id, { pane: true })}>
@@ -819,6 +822,17 @@ export function TerminalView({ tab, visible, focused, split, rect }: Props) {
             {tab.color && <i style={{ background: tab.color }} />}
             {tab.title}
             {tab.status !== 'connected' && <span className="pane-label-state">{tab.status === 'connecting' ? 'connecting' : tab.status === 'error' ? 'failed' : 'closed'}</span>}
+            <button
+              className="pane-close pop"
+              title="Move to its own tab (keeps running)"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                popOutPane(tab.id);
+              }}
+            >
+              <SquareArrowOutUpRight size={10} strokeWidth={2.5} />
+            </button>
             <button
               className="pane-close"
               title="Close this pane (⌘W)"

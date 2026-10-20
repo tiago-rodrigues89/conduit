@@ -30,6 +30,7 @@ import {
   toast,
   toggleZoomPane,
   unsplitTab,
+  separatePanes,
   chooseSidebarPanel,
   setStats,
   updateSettings,
@@ -45,6 +46,7 @@ import { Sidebar } from './components/Sidebar';
 import { SftpView } from './components/SftpView';
 import { TabBar } from './components/TabBar';
 import { TerminalGroup } from './components/TerminalGroup';
+import { TerminalLayer } from './components/TerminalLayer';
 import { SessionEditor } from './components/dialogs/SessionEditor';
 import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { FolderDialog } from './components/dialogs/FolderDialog';
@@ -115,6 +117,8 @@ function runMenuAction(action: string) {
       return splitPane(tab.id, action === 'split-right' ? 'row' : 'col');
     case 'unsplit':
       return tab?.kind === 'terminal' && unsplitTab(tab.id);
+    case 'separate':
+      return tab?.kind === 'terminal' && separatePanes(tab.id);
     case 'zoom-pane':
       return tab?.kind === 'terminal' && toggleZoomPane(tab.id);
     case 'equalize-panes':
@@ -329,6 +333,7 @@ export function App() {
             if (t.kind === 'sftp') return <SftpView key={t.id} tab={t} active={active} />;
             return <HomeView key={t.id} active={active} />;
           })}
+          <TerminalLayer />
         </div>
       </main>
       <Dialogs />

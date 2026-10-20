@@ -115,6 +115,8 @@ interface AppState {
   focusedPane: Record<string, string>;
   /** live view state of each terminal (for the status bar) */
   termUi: Record<string, TermUi>;
+  /** where the terminals of the visible tab are drawn (px, inside the views area) */
+  paneArea: { x: number; y: number; w: number; h: number };
   /** compose bar: drafts a command and sends it to chosen terminals */
   compose: { open: boolean; target: ComposeTarget };
   sync: SyncStatus;
@@ -162,6 +164,7 @@ export const useApp = create<AppState>(() => ({
   workspaces: [],
   focusedPane: {},
   termUi: {},
+  paneArea: { x: 0, y: 0, w: 0, h: 0 },
   compose: { open: false, target: 'pane' },
   sync: { state: 'off' },
 }));
@@ -783,47 +786,118 @@ export function splitPane(id: string, dir: SplitDir) {
   placeInSplit(pane, dir, true, id);
 }
 
-/** Can this tab be dragged into another tab as a split pane? (one terminal, not split) */
+/** Can this tab be dragged into another tab (as split panes)? */
 export function canMoveIntoSplit(tabId: string, targetRootId: string) {
   const t = get().tabs.find((x) => x.id === tabId);
-  return !!t && t.kind === 'terminal' && !t.paneOf && !t.layout && tabId !== targetRootId;
+  return !!t && t.kind === 'terminal' && !t.paneOf && tabId !== targetRootId;
 }
 
 /**
- * Moves a terminal tab into another tab as a split pane. The pane gets a new
- * shell: on SSH it uses the same connection (no new login) in the same folder.
+ * Moves a terminal tab (with its panes) into another tab next to `besideId`.
+ * Nothing restarts: the terminals keep their connection and screen.
  */
-export async function moveTabIntoSplit(tabId: string, besideId: string, dir: SplitDir, before = false): Promise<void> {
-  const t = get().tabs.find((x) => x.id === tabId);
-  if (!t || t.kind !== 'terminal' || !canMoveIntoSplit(tabId, rootOf(besideId))) return;
-  const session = sessionById(t.sessionId);
-  let pane: TerminalTab;
-  if (session && typeInfo(session.type).opens === 'terminal') pane = terminalFor(session)!;
-  else if (t.mode === 'ssh' && t.spec) pane = { id: uid(), kind: 'terminal', mode: 'ssh', title: t.title, spec: t.spec, status: 'connecting', generation: 0 };
-  else pane = localTerminal(t.cwd);
-  pane.title = t.title;
-  pane.color = t.color;
-  if (t.mode === 'local') pane.cwd = t.cwd;
-  if (t.mode === 'ssh' && t.status === 'connected' && t.connId) {
-    pane.shareConnId = t.connId;
-    if (t.cwd && t.integrated) pane.startIn = t.cwd;
+export function moveTabIntoSplit(tabId: string, besideId: string, dir: SplitDir, before = false) {
+  const s = get();
+  const t = s.tabs.find((x) => x.id === tabId);
+  const targetRoot = rootOf(besideId, s.tabs);
+  if (!t || t.kind !== 'terminal' || !canMoveIntoSplit(tabId, targetRoot)) return;
+  const part = t.layout || leaf(t.id);
+  const moving = leafIds(part);
+  const focus = s.focusedPane[tabId] && moving.includes(s.focusedPane[tabId]) ? s.focusedPane[tabId] : tabId;
+  set((st) => ({
+    tabs: st.tabs.map((x) => {
+      if (x.id === targetRoot && x.kind === 'terminal') {
+        return { ...x, layout: splitLeaf(x.layout || leaf(x.id), besideId, part, dir, before), zoomedPane: undefined, viewKey: x.viewKey || x.id };
+      }
+      if (moving.includes(x.id) && x.kind === 'terminal') return { ...x, paneOf: targetRoot, layout: undefined, zoomedPane: undefined };
+      return x;
+    }),
+  }));
+  activateTab(focus, { pane: true });
+}
+
+/** Moves `id` right after `afterId` in the tab list (tab bar order). */
+function placeAfter(tabs: Tab[], id: string, afterId: string): Tab[] {
+  const item = tabs.find((x) => x.id === id);
+  if (!item) return tabs;
+  const rest = tabs.filter((x) => x.id !== id);
+  const at = rest.findIndex((x) => x.id === afterId);
+  rest.splice(at === -1 ? rest.length : at + 1, 0, item);
+  return rest;
+}
+
+/**
+ * Takes a pane out of its split tab; it becomes a tab of its own, placed after
+ * `after` (default: the tab it came from). The terminal keeps running.
+ */
+function detachPane(tabs: Tab[], id: string, after?: string): Tab[] {
+  const rootId = rootOf(id, tabs);
+  const root = tabs.find((x) => x.id === rootId) as TerminalTab | undefined;
+  if (!root?.layout) return tabs;
+  const layout = removeLeaf(root.layout, id);
+  const remaining = leafIds(layout || undefined);
+  const keepLayout = layout && remaining.length > 1 ? layout : undefined;
+  if (id !== rootId) {
+    const out = tabs.map((x) => {
+      if (x.id === rootId) return { ...x, layout: keepLayout, zoomedPane: root.zoomedPane === id ? undefined : root.zoomedPane } as Tab;
+      if (x.id === id) return { ...x, paneOf: undefined, layout: undefined, zoomedPane: undefined, viewKey: undefined } as Tab;
+      return x;
+    });
+    return placeAfter(out, id, after || rootId);
   }
-  if (t.mode === 'serial' || t.mode === 'telnet') {
-    // a serial port can only be open once: close first, then reopen in the split
-    await closeTab(tabId, true);
-    await new Promise((r) => setTimeout(r, 300));
-    placeInSplit(pane, dir, true, besideId, before);
-    return;
-  }
-  placeInSplit(pane, dir, true, besideId, before);
-  // the old tab goes away once the pane holds the connection, so no new login is needed
-  const t0 = Date.now();
-  while (Date.now() - t0 < 15000) {
-    const p = get().tabs.find((x) => x.id === pane.id);
-    if (!p || (p.kind === 'terminal' && p.status !== 'connecting')) break;
-    await new Promise((r) => setTimeout(r, 150));
-  }
-  await closeTab(tabId, true);
+  // the tab's own terminal leaves: the next pane takes over the tab (and its place in the tab bar)
+  const heirId = remaining[0];
+  let out = tabs.map((x) => {
+    if (x.id === rootId) return { ...x, layout: undefined, zoomedPane: undefined, viewKey: uid() } as Tab;
+    if (x.id === heirId) return { ...x, paneOf: undefined, layout: keepLayout, viewKey: root.viewKey || root.id, zoomedPane: undefined } as Tab;
+    if (x.kind === 'terminal' && x.paneOf === rootId) return { ...x, paneOf: heirId };
+    return x;
+  });
+  const heir = out.find((x) => x.id === heirId)!;
+  out = out.filter((x) => x.id !== heirId);
+  out.splice(out.findIndex((x) => x.id === rootId), 0, heir);
+  return placeAfter(out, rootId, after || heirId);
+}
+
+/** Moves one pane out into a tab of its own. */
+export function popOutPane(id: string) {
+  if (!isSplit(id)) return;
+  const s = get();
+  const rootId = rootOf(id, s.tabs);
+  const root = s.tabs.find((x) => x.id === rootId) as TerminalTab;
+  const remembered = s.focusedPane[rootId];
+  const stay = remembered && remembered !== id ? remembered : leafIds(root.layout).find((x) => x !== id)!;
+  set((st) => {
+    const focusedPane = { ...st.focusedPane };
+    delete focusedPane[rootId];
+    return { tabs: detachPane(st.tabs, id), focusedPane };
+  });
+  // stay in the split tab; the moved terminal waits in its own tab
+  activateTab(stay, { pane: true });
+}
+
+/** Unsplit: every pane of the tab becomes a tab of its own again (all keep running). */
+export function separatePanes(id = get().activeTabId) {
+  const s = get();
+  const rootId = rootOf(id, s.tabs);
+  const root = s.tabs.find((x) => x.id === rootId);
+  if (!root || root.kind !== 'terminal' || !root.layout) return;
+  const order = leafIds(root.layout);
+  set((st) => {
+    let tabs = st.tabs;
+    let after = order[0];
+    // the first pane keeps the tab; the others follow it in their split order
+    if (order[0] !== rootId) tabs = detachPane(tabs, rootId);
+    for (const pid of order.slice(1)) {
+      if (pid === rootId) continue;
+      tabs = detachPane(tabs, pid, after);
+      after = pid;
+    }
+    const focusedPane = { ...st.focusedPane };
+    delete focusedPane[rootId];
+    return { tabs, focusedPane };
+  });
+  activateTab(s.activeTabId, { pane: true });
 }
 
 export function focusPane(dir: 'left' | 'right' | 'up' | 'down') {
@@ -890,25 +964,8 @@ export async function closePane(id: string, force = false): Promise<void> {
   set((st) => {
     const root = st.tabs.find((x) => x.id === rootId) as TerminalTab | undefined;
     if (!root?.layout) return {};
-    const layout = removeLeaf(root.layout, id);
-    const remaining = leafIds(layout || undefined);
-    const keepLayout = layout && remaining.length > 1 ? layout : undefined;
-    let tabs = st.tabs.filter((x) => x.id !== id);
-    let newRootId = rootId;
-    if (id === rootId) {
-      // the tab's own terminal closed: the first remaining pane owns the tab now
-      newRootId = remaining[0];
-      const idx = st.tabs.findIndex((x) => x.id === rootId);
-      const heir = tabs.find((x) => x.id === newRootId) as TerminalTab;
-      const promoted: TerminalTab = { ...heir, paneOf: undefined, layout: keepLayout, viewKey: root.viewKey || root.id, zoomedPane: undefined };
-      tabs = tabs.filter((x) => x.id !== newRootId);
-      tabs.splice(Math.min(idx, tabs.length), 0, promoted);
-      tabs = tabs.map((x) => (x.kind === 'terminal' && x.paneOf === rootId ? { ...x, paneOf: newRootId } : x));
-    } else {
-      tabs = tabs.map((x) =>
-        x.id === rootId ? ({ ...x, layout: keepLayout, zoomedPane: (x as TerminalTab).zoomedPane === id ? undefined : (x as TerminalTab).zoomedPane } as Tab) : x
-      );
-    }
+    const remaining = leafIds(root.layout).filter((x) => x !== id);
+    const tabs = detachPane(st.tabs, id).filter((x) => x.id !== id);
     const focusedPane = { ...st.focusedPane };
     delete focusedPane[rootId];
     return { tabs, focusedPane, activeTabId: st.activeTabId === id ? remaining[0] : st.activeTabId };

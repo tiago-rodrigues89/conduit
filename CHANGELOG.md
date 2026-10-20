@@ -2,6 +2,13 @@
 
 Versions follow [semantic versioning](https://semver.org): new features raise the middle number, fixes the last one.
 
+## 1.9.0
+- Merge tabs: drag a tab onto the middle of another tab (it shows “split”), or onto a side of the visible terminal — both end up side by side. Nothing restarts: connections, screens and folders stay as they were
+- Unsplit: right-click the tab → “Unsplit: Every Pane Back to Its Own Tab” (⌥⌘U) — all panes become tabs again and keep running. “Close Other Panes” (⌥⌘W) stays available
+- ⇱ after a pane's name moves just that pane back to its own tab; × still closes it
+- Dragging a tab no longer switches to it, and hovering a tab while dragging switches to that tab
+- Dropping a session from the sidebar onto a tab opens it next to that tab's terminal
+
 ## 1.8.0
 - Drag a session from the sidebar onto a terminal to open it as a split: the half you drop on (left, right, top, bottom) is where it opens, with a preview while dragging
 - Drag a tab onto another tab's terminal to move it in as a split pane (SSH keeps its connection, no new login; same folder)

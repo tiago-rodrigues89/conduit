@@ -19,7 +19,7 @@ A modern SSH, SFTP and terminal app for macOS. It takes the parts people like mo
 - Zoom with ⌘+ / ⌘- / ⌘0, ⌘+scroll or trackpad pinch. Search the scrollback with ⌘F. 20,000 lines of scrollback by default.
 - Mac line editing: ⌥←/→ jumps by word, ⌘←/→ goes to start/end of line, ⌥⌫ deletes a word.
 - Local shell tabs (⌘T) with your normal zsh.
-- **Split panes**: ⌘D splits right, ⇧⌘D splits down. ⌥⌘←→↑↓ moves between panes, ⇧⌘↩ maximizes one, drag the dividers to resize. Splitting an SSH terminal opens a new shell on the *same* connection (no second login or 2FA) in the same folder. **Drag a session** from the sidebar onto a terminal to open it as a split — the half you drop on (left, right, top, bottom) is where it goes. Drag a **tab** onto another tab's terminal to move it in as a pane. Right-click a session → *Open in Split Pane*, or a folder → *Connect All in One Tab, Split*. To undo: the × after a pane's name closes that pane, and *Back to One Pane* (tab right-click menu, ⌥⌘W) keeps the pane you are in and closes the others.
+- **Split panes**: ⌘D splits right, ⇧⌘D splits down. ⌥⌘←→↑↓ moves between panes, ⇧⌘↩ maximizes one, drag the dividers to resize. Splitting an SSH terminal opens a new shell on the *same* connection (no second login or 2FA) in the same folder. **Drag a session** from the sidebar onto a terminal to open it as a split — the half you drop on (left, right, top, bottom) is where it goes. Drag a **tab** onto the middle of another tab (or onto a side of the visible terminal) to put both side by side — nothing restarts. To undo: right-click the tab → *Unsplit* (⌥⌘U) gives every pane its own tab again, still running; ⇱ after a pane's name moves just that one out. Right-click a session → *Open in Split Pane*, or a folder → *Connect All in One Tab, Split*. The × after a pane's name closes that pane, and *Close Other Panes* (⌥⌘W) keeps the pane you are in and closes the others.
 - **Button bar** under the terminal (like SecureCRT): one-click commands. Keep several bars (e.g. *Linux*, *Cisco IOS*) and pick one per session. Click sends to the focused terminal, ⌥-click to all panes of the tab. Right-click a button to edit, move or send it elsewhere; drag to reorder. Hide it with ⇧⌘U.
 - **Compose bar** (⇧⌘E or *Compose* in the status bar, hidden by default): a slim line to write a command first and send it to this terminal, all panes of the tab, all connected terminals or the ones you pick. ↑ recalls earlier commands.
 - **Broadcast** input to every connected terminal (⇧⌘B), like MobaXterm's MultiExec.
@@ -112,7 +112,7 @@ npm run icon       # regenerate build/icon.icns from build/icon.svg
 | ⌥⌘←→↑↓, ⇧⌘↩ | Move between panes, maximize pane |
 | ⇧⌘O | Open SFTP browser for the current SSH tab |
 | ⌘W, ⇧⌘W | Close pane (or tab), close tab with all panes |
-| ⌥⌘W | Back to one pane (close the other panes) |
+| ⌥⌘U, ⌥⌘W | Unsplit (every pane back to its own tab), close the other panes |
 | ⌘R, ⌥⌘D | Reconnect, duplicate tab |
 | ⇧⌘U, ⇧⌘E | Button bar, compose bar |
 | ⌥⌘L | Start/stop logging this terminal |
