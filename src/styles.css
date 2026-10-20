@@ -3280,3 +3280,125 @@ body.resizing-col * {
 .row-actions + .field-hint.block {
   margin-top: 12px;
 }
+
+/* compose target picker: stays open while several terminals are ticked */
+.compose-bar {
+  position: relative;
+}
+.compose-picker-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.compose-picker {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 40;
+  min-width: 280px;
+  max-width: 420px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 5px;
+  border-radius: var(--radius);
+  background: rgba(30, 34, 44, 0.97);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(18px);
+  animation: card-in 0.1s ease-out;
+}
+.cp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  text-align: left;
+  white-space: nowrap;
+}
+.cp-row:hover:not(:disabled) {
+  background: var(--bg-active);
+}
+.cp-row:disabled {
+  color: var(--text-faint);
+}
+.cp-check {
+  width: 14px;
+  display: inline-flex;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.cp-box {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-input);
+  color: #fff;
+  flex-shrink: 0;
+}
+.cp-box.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0d0f14;
+}
+.cp-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cp-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cp-sub,
+.cp-count {
+  margin-left: auto;
+  padding-left: 10px;
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.cp-sub + .cp-sub {
+  margin-left: 0;
+}
+.cp-sep {
+  height: 1px;
+  margin: 5px 6px;
+  background: var(--border-strong);
+}
+.cp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 4px 30px;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.cp-head .link-btn {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11.5px;
+}
+.cp-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 5px;
+  padding: 6px 4px 2px 8px;
+  border-top: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: 11.5px;
+}

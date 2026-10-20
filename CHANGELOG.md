@@ -2,6 +2,9 @@
 
 Versions follow [semantic versioning](https://semver.org): new features raise the middle number, fixes the last one.
 
+## 1.5.1
+- Compose bar: the target picker stays open while you tick several terminals (Done, Esc or a click outside closes it); the button shows the picked terminal's name or how many are picked
+
 ## 1.5.0
 - Split panes: ⌘D right, ⇧⌘D down, ⌥⌘arrows to move, ⇧⌘↩ to maximize, drag the dividers. An SSH split opens a new shell on the same connection (no second login) in the same folder
 - Button bar under the terminal (SecureCRT-style): one-click commands, several bars (e.g. Linux, Cisco), per-session bar, ⌥-click sends to all panes
