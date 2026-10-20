@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   CloudUpload,
+  Paintbrush,
   FileText,
   FolderOpen,
   FolderTree,
@@ -24,7 +25,9 @@ import { DEFAULT_LOG_DIR, uid } from '../../lib/defaults';
 import { exportSshConfig } from '../../lib/backup';
 import { fontStack, installedFonts } from '../../lib/fonts';
 import { ansiToSpans, DEFAULT_RULES, Highlighter, HIGHLIGHT_COLORS, PREVIEW_TEXT } from '../../lib/highlight';
-import { getTheme, THEMES } from '../../lib/themes';
+import { allThemes, getTheme, hasBackdrop } from '../../lib/themes';
+import { Backdrop } from '../Backdrop';
+import { customizeTheme, ThemeEditor } from './ThemeEditor';
 import type { HighlightRule, PromptStyle, Settings, Trigger } from '../../lib/types';
 import {
   closeDialog,
@@ -94,13 +97,15 @@ export function SettingsDialog({ d }: { d: Extract<Dialog, { type: 'settings' }>
 type P = { s: Settings; set: (p: Partial<Settings>) => void };
 
 function TerminalPreview({ s }: { s: Settings }) {
-  const t = getTheme(s.theme).colors;
+  const theme = getTheme(s.theme);
+  const t = theme.colors;
   const c = (k: keyof typeof t) => ({ color: t[k] });
   return (
     <div
       className="term-preview"
       style={{ background: t.background, color: t.foreground, fontFamily: fontStack(s.fontFamily), fontSize: s.fontSize, lineHeight: s.lineHeight, letterSpacing: s.letterSpacing, fontWeight: s.fontWeight }}
     >
+      <Backdrop theme={theme} />
       <div>
         <span style={c('green')}>tiago@web-01</span>:<span style={c('blue')}>~/app</span>$ ls -la
       </div>
@@ -124,11 +129,12 @@ function Appearance({ s, set }: P) {
   return (
     <>
       <TerminalPreview s={s} />
-      <Field label="Theme">
+      <Field label="Theme" group>
         <div className="theme-picker">
-          {THEMES.map((t) => (
-            <button key={t.id} className={`theme-card${s.theme === t.id ? ' active' : ''}`} onClick={() => set({ theme: t.id })}>
+          {allThemes().map((t) => (
+            <button key={t.id} className={`theme-card${s.theme === t.id ? ' active' : ''}${t.custom ? ' custom' : ''}`} onClick={() => set({ theme: t.id })}>
               <span className="theme-card-preview" style={{ background: t.colors.background, color: t.colors.foreground }}>
+                {hasBackdrop(t) && <Backdrop theme={t} />}
                 <span style={{ color: t.colors.green }}>$</span> ls
                 <span className="theme-card-dots">
                   {[t.colors.red, t.colors.green, t.colors.yellow, t.colors.blue, t.colors.magenta, t.colors.cyan].map((c, i) => (
@@ -139,8 +145,22 @@ function Appearance({ s, set }: P) {
               <span className="theme-card-name">{t.name}</span>
             </button>
           ))}
+          <button className="theme-card add" onClick={() => customizeTheme(getTheme(s.theme))} title="Make your own theme from the selected one">
+            <span className="theme-card-preview">
+              <Paintbrush size={18} />
+            </span>
+            <span className="theme-card-name">Customize…</span>
+          </button>
         </div>
       </Field>
+      {getTheme(s.theme).custom && getTheme(s.theme).id === s.theme ? (
+        <ThemeEditor theme={getTheme(s.theme)} />
+      ) : (
+        <p className="field-hint block">
+          The presets are ready to use. <b>Customize…</b> makes your own copy of the selected theme — with your colors, a gradient or a picture
+          behind the text.
+        </p>
+      )}
       <div className="row">
         <Field label="Font">
           <select value={customFont ? '__custom' : s.fontFamily} onChange={(e) => set({ fontFamily: e.target.value === '__custom' ? 'Menlo' : e.target.value })}>

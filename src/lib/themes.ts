@@ -1,10 +1,29 @@
 import type { ITheme } from '@xterm/xterm';
 
+/** What is drawn behind the text of a custom theme. */
+export interface Backdrop {
+  type: 'color' | 'gradient' | 'image';
+  /** second color of the gradient (the first is the background color) */
+  gradientTo: string;
+  gradientAngle: number;
+  /** file in Conduit's backgrounds folder */
+  image: string;
+  fit: 'cover' | 'contain' | 'tile' | 'center';
+  /** how strongly the image shows through the background color (0..1) */
+  imageOpacity: number;
+  blur: number;
+}
+
 export interface TermTheme {
   id: string;
   name: string;
   /** UI accent used for focus rings, active tabs etc. */
   accent: string;
+  /** made by the user (Settings → Appearance) */
+  custom?: boolean;
+  /** preset it was made from */
+  base?: string;
+  backdrop?: Backdrop;
   colors: Required<
     Pick<
       ITheme,
@@ -347,8 +366,54 @@ export const THEMES: TermTheme[] = [
   },
 ];
 
+// ---- custom themes ----------------------------------------------------------------------
+
+let customThemes: TermTheme[] = [];
+
+/** The user's own themes (stored in the settings). */
+export function setCustomThemes(list: TermTheme[] | undefined) {
+  customThemes = Array.isArray(list) ? list : [];
+}
+
+export function allThemes(): TermTheme[] {
+  return [...THEMES, ...customThemes];
+}
+
 export function getTheme(id: string | undefined): TermTheme {
-  return THEMES.find((t) => t.id === id) || THEMES[0];
+  return customThemes.find((t) => t.id === id) || THEMES.find((t) => t.id === id) || THEMES[0];
+}
+
+export const DEFAULT_BACKDROP: Backdrop = {
+  type: 'color',
+  gradientTo: '#2a1b3d',
+  gradientAngle: 160,
+  image: '',
+  fit: 'cover',
+  imageOpacity: 0.35,
+  blur: 0,
+};
+
+/** A copy of a theme the user can change freely. */
+export function copyTheme(from: TermTheme, id: string, name: string): TermTheme {
+  return {
+    id,
+    name,
+    accent: from.accent,
+    custom: true,
+    base: from.custom ? from.base : from.id,
+    colors: { ...from.colors },
+    backdrop: { ...DEFAULT_BACKDROP, ...(from.backdrop || {}) },
+  };
+}
+
+/** Does the terminal need a see-through background (image or gradient behind the text)? */
+export function hasBackdrop(t: TermTheme) {
+  const b = t.backdrop;
+  return !!b && (b.type === 'gradient' || (b.type === 'image' && !!b.image));
+}
+
+export function backgroundUrl(file: string) {
+  return `conduit-media://backgrounds/${encodeURIComponent(file)}`;
 }
 
 function hexToRgb(hex: string): [number, number, number] {

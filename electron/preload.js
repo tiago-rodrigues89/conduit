@@ -3,7 +3,7 @@
 
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
-const INVOKE_PREFIXES = ['app:', 'store:', 'secrets:', 'clipboard:', 'shell:', 'dialog:', 'menu:', 'term:', 'local:', 'ssh:', 'sftp:', 'transfer:', 'fs:', 'import:', 'telnet:', 'serial:', 'launch:', 'monitor:', 'log:', 'backup:', 'sync:'];
+const INVOKE_PREFIXES = ['app:', 'store:', 'secrets:', 'clipboard:', 'shell:', 'dialog:', 'menu:', 'term:', 'local:', 'ssh:', 'sftp:', 'transfer:', 'fs:', 'import:', 'telnet:', 'serial:', 'launch:', 'monitor:', 'log:', 'backup:', 'sync:', 'appearance:'];
 const SEND_CHANNELS = new Set(['term:write', 'term:resize', 'term:ack', 'ui:answer', 'app:set-confirm-close', 'app:close-confirmed', 'app:close-cancelled', 'app:set-vibrancy']);
 const EVENT_CHANNELS = new Set([
   'term:data',

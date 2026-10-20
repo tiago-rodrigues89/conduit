@@ -1,3 +1,5 @@
+import type { TermTheme } from './themes';
+
 export type AuthMethod = 'auto' | 'password' | 'key' | 'agent';
 export type SessionType = 'ssh' | 'sftp' | 'local' | 'command' | 'telnet' | 'serial' | 'rdp' | 'vnc' | 'ssm';
 export type PromptStyle = 'conduit' | 'frame' | 'minimal' | 'shell';
@@ -232,6 +234,8 @@ export interface Settings {
   syncDir: string;
   /** also sync saved passwords (inside the encrypted sync file) */
   syncSecrets: boolean;
+  /** themes the user made (Settings → Appearance) */
+  customThemes: TermTheme[];
 }
 
 export type SplitDir = 'row' | 'col';

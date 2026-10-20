@@ -1,6 +1,7 @@
 'use strict';
 
-const { app, BrowserWindow, Menu, ipcMain, nativeTheme, shell, dialog, clipboard, screen, systemPreferences } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, nativeTheme, shell, dialog, clipboard, screen, systemPreferences, protocol, net } = require('electron');
+const { pathToFileURL } = require('url');
 const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
@@ -27,6 +28,12 @@ const backup = require('./backup');
 const { SyncEngine } = require('./sync');
 
 const DEV_URL = process.env.CONDUIT_DEV_URL;
+
+// Background images of custom themes are copied into this folder and shown
+// through conduit-media://backgrounds/<file> (nothing else can be read that way).
+protocol.registerSchemesAsPrivileged([{ scheme: 'conduit-media', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
+const IMAGE_RE = /^[\w-]+\.(png|jpe?g|gif|webp|avif)$/i;
+const backgroundsDir = () => path.join(app.getPath('userData'), 'backgrounds');
 
 let win = null;
 let confirmClose = true;
@@ -425,6 +432,38 @@ function registerIpc() {
     return { file: res.filePath, count };
   });
 
+  // background images for custom themes
+  handle('appearance:choose-image', async () => {
+    const res = await dialog.showOpenDialog(win, {
+      title: 'Choose a background image',
+      properties: ['openFile'],
+      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'heif', 'avif'] }],
+    });
+    if (res.canceled || !res.filePaths[0]) return null;
+    const src = res.filePaths[0];
+    if (fs.statSync(src).size > 40 * 1024 * 1024) throw new Error('The image is larger than 40 MB');
+    const ext = path.extname(src).toLowerCase().replace('jpeg', 'jpg');
+    fs.mkdirSync(backgroundsDir(), { recursive: true });
+    if (ext === '.heic' || ext === '.heif') {
+      // the window cannot show HEIC (e.g. the macOS wallpapers): convert to JPEG with macOS' sips
+      const name = `${crypto.randomUUID()}.jpg`;
+      await new Promise((resolve, reject) =>
+        require('child_process').execFile('/usr/bin/sips', ['-s', 'format', 'jpeg', src, '--out', path.join(backgroundsDir(), name)], (err) =>
+          err ? reject(new Error('This picture could not be converted')) : resolve()
+        )
+      );
+      return name;
+    }
+    const name = `${crypto.randomUUID()}${ext}`;
+    fs.copyFileSync(src, path.join(backgroundsDir(), name));
+    return name;
+  });
+  // only Conduit's own copies are removed, never the original picture
+  handle('appearance:remove-image', (name) => {
+    if (!IMAGE_RE.test(String(name))) return;
+    fs.rmSync(path.join(backgroundsDir(), name), { force: true });
+  });
+
   // sync between Macs
   handle('sync:configure', (cfg) => sync.configure(cfg));
   handle('sync:passphrase', (passphrase) => sync.setPassphrase(passphrase));
@@ -596,6 +635,13 @@ app.whenReady().then(() => {
     applicationName: 'Conduit',
     applicationVersion: app.getVersion(),
     copyright: 'SSH & SFTP client',
+  });
+  protocol.handle('conduit-media', (req) => {
+    const url = new URL(req.url);
+    const name = decodeURIComponent(url.pathname.replace(/^\//, ''));
+    const file = path.join(backgroundsDir(), name);
+    if (url.host !== 'backgrounds' || !IMAGE_RE.test(name) || !fs.existsSync(file)) return new Response('', { status: 404 });
+    return net.fetch(pathToFileURL(file).toString());
   });
   buildMenu();
   registerIpc();

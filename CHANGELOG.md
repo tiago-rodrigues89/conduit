@@ -2,6 +2,10 @@
 
 Versions follow [semantic versioning](https://semver.org): new features raise the middle number, fixes the last one.
 
+## 1.6.0
+- Custom themes (Settings → Appearance → Customize…): your own copy of any preset with a picture or gradient behind the text, every color editable (text, cursor, selection, app accent, all 16 terminal colors). The presets stay as they are
+- Pictures: fill, fit, center or tile, visibility and blur; HEIC pictures (e.g. the macOS wallpapers) are converted automatically
+
 ## 1.5.1
 - Compose bar: the target picker stays open while you tick several terminals (Done, Esc or a click outside closes it); the button shows the picked terminal's name or how many are picked
 

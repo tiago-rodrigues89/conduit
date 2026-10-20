@@ -14,7 +14,8 @@ import { shellQuote } from '../lib/format';
 import { Highlighter } from '../lib/highlight';
 import { ssmCommand } from '../lib/sessionTypes';
 import { terminals, type TabEvent } from '../lib/terminals';
-import { getTheme } from '../lib/themes';
+import { getTheme, hasBackdrop } from '../lib/themes';
+import { Backdrop } from './Backdrop';
 import type { Settings, TerminalTab } from '../lib/types';
 import {
   activateTab,
@@ -46,6 +47,8 @@ function xtermTheme(id: string): ITheme {
   const t = getTheme(id);
   return {
     ...t.colors,
+    // a picture or gradient is drawn behind the text
+    background: hasBackdrop(t) ? '#00000000' : t.colors.background,
     selectionInactiveBackground: t.colors.selectionBackground,
     scrollbarSliderBackground: 'rgba(255,255,255,0.10)',
     scrollbarSliderHoverBackground: 'rgba(255,255,255,0.18)',
@@ -185,6 +188,7 @@ export function TerminalView({ tab, visible, focused, split, rect }: Props) {
       rightClickSelectsWord: false,
       drawBoldTextInBrightColors: false,
       allowProposedApi: true,
+      allowTransparency: true,
       customGlyphs: true,
       rescaleOverlappingGlyphs: true,
       smoothScrollDuration: 0,
@@ -767,7 +771,7 @@ export function TerminalView({ tab, visible, focused, split, rect }: Props) {
       .catch((err) => toast('error', err.message));
   };
 
-  const themeBg = getTheme(themeIdFor(tab, settings)).colors.background;
+  const theme = getTheme(themeIdFor(tab, settings));
   const GAP = 1;
   const style: React.CSSProperties = {
     display: visible ? 'block' : 'none',
@@ -782,11 +786,12 @@ export function TerminalView({ tab, visible, focused, split, rect }: Props) {
       <div
         ref={wrapRef}
         className={`terminal-wrap${bell ? ' bell' : ''}`}
-        style={{ background: themeBg, padding: settings.padding }}
+        style={{ background: theme.colors.background, padding: settings.padding }}
         onDragOver={onDragOver}
         onDragLeave={() => setDropHint(null)}
         onDrop={onDrop}
       >
+        <Backdrop theme={theme} />
         <div ref={hostRef} className="terminal-host" />
         {searchOpen && termRef.current && searchRef.current && (
           <SearchBar

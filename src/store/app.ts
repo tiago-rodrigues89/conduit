@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS, defaultButtonBars, newFolder, newSession, uid } from 
 import { equalize, leaf, leafIds, neighbor, removeLeaf, splitLeaf } from '../lib/panes';
 import { DEFAULT_RULES } from '../lib/highlight';
 import { typeInfo } from '../lib/sessionTypes';
+import { setCustomThemes } from '../lib/themes';
 import { terminals } from '../lib/terminals';
 import type {
   ButtonBar,
@@ -220,7 +221,11 @@ export function applyStoreData(data: { sessions?: any; snippets?: any; credentia
     if (Array.isArray(data.automation.triggers)) patch.triggers = data.automation.triggers;
     if (Array.isArray(data.automation.workspaces)) patch.workspaces = data.automation.workspaces;
   }
-  if (data.settings) patch.settings = { ...get().settings, ...data.settings };
+  if (data.settings) {
+    const settings = { ...get().settings, ...data.settings };
+    setCustomThemes(settings.customThemes);
+    patch.settings = settings;
+  }
   set(patch);
 }
 
@@ -237,6 +242,7 @@ export async function initApp() {
   const [data, info] = await Promise.all([api.store.load(), api.app.info()]);
   const automation = data.automation || {};
   const settings: Settings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
+  setCustomThemes(settings.customThemes);
   if (!Array.isArray(settings.highlightRules) || !settings.highlightRules.length) settings.highlightRules = DEFAULT_RULES;
   const items: TreeItem[] = Array.isArray(data.sessions?.items)
     ? data.sessions.items.map((it: TreeItem) => (it.kind === 'session' ? newSession(it) : newFolder(it)))
@@ -319,6 +325,7 @@ export function permissionsDialog(names: string[], mode: number, isDir: boolean)
 // ---- settings ------------------------------------------------------------------------
 
 export function updateSettings(patch: Partial<Settings>) {
+  if ('customThemes' in patch) setCustomThemes(patch.customThemes);
   set((s) => ({ settings: { ...s.settings, ...patch } }));
   persist('settings');
   if ('confirmClose' in patch) api.app.setConfirmClose(!!patch.confirmClose);

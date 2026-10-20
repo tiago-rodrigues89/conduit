@@ -4,7 +4,7 @@ import { api } from '../../lib/api';
 import { newSession, uid } from '../../lib/defaults';
 import { iconFor, ICON_NAMES } from '../../lib/icons';
 import { TEMPLATES, typeInfo, type Template } from '../../lib/sessionTypes';
-import { getTheme, THEMES } from '../../lib/themes';
+import { allThemes, getTheme } from '../../lib/themes';
 import type { AuthMethod, Forward, LoginStep, PromptStyle, SessionItem, TriState } from '../../lib/types';
 import { closeDialog, folderPath, openDialog, openSession, saveItem, sessionById, useApp, type Dialog } from '../../store/app';
 import { Field, Modal, PasswordInput, Segmented, Toggle } from '../ui';
@@ -573,7 +573,7 @@ function SessionForm({ d, initial, isNew, onBack }: { d: Dialog & { type: 'sessi
                     <ThemeSwatch id={settings.theme} />
                     <span>Default</span>
                   </button>
-                  {THEMES.map((t) => (
+                  {allThemes().map((t) => (
                     <button type="button" key={t.id} className={`theme-chip${s.theme === t.id ? ' active' : ''}`} onClick={() => set('theme', t.id)}>
                       <ThemeSwatch id={t.id} />
                       <span>{t.name}</span>

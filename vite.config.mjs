@@ -9,7 +9,7 @@ const csp = {
   transformIndexHtml(html) {
     return html.replace(
       '<!--csp-->',
-      `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'">`
+      `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: conduit-media:; connect-src 'self'">`
     );
   },
 };

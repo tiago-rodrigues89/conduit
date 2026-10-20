@@ -202,6 +202,11 @@ export const api = {
     reveal: (target: string) => inv('fs:reveal', target),
     readTail: (target: string) => inv<string>('fs:read-tail', target),
   },
+  appearance: {
+    /** copies a picture into Conduit's backgrounds folder; returns its file name */
+    chooseImage: () => inv<string | null>('appearance:choose-image'),
+    removeImage: (name: string) => inv('appearance:remove-image', name),
+  },
   log: {
     /** starts writing a terminal's output to a file; returns the file path */
     start: (

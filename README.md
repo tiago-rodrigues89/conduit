@@ -12,6 +12,7 @@ A modern SSH, SFTP and terminal app for macOS. It takes the parts people like mo
 
 **Terminal**
 - Fast, GPU-rendered terminal (xterm.js + WebGL) with modern dark themes. *Ember* and *Forest* are tinted themes you can give to production or staging servers.
+- **Custom themes** if you want more (Settings → Appearance → *Customize…*): a copy of any preset with your own picture or a gradient behind the text, and every color editable — text, cursor, selection, the app's accent and all 16 terminal colors. Pictures can fill, fit, center or tile, with visibility and blur. Custom themes can also be picked per session.
 - **Syntax highlighting** of output, like MobaXterm: errors, warnings, success words, IPs, MAC addresses, URLs, dates and log levels. Rules are editable regexes. Output that is already colored, and full-screen apps like vim or htop, are left alone. Toggle per tab with ⇧⌘H.
 - **Copy on select**, **right-click pastes**. ⌘C / ⌘V / ⌘A work as usual. ⌃-click or ⇧-right-click opens the context menu.
 - Asks before pasting several lines at once, so you don't run multiple commands by accident.

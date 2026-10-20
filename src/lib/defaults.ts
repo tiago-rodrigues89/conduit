@@ -44,6 +44,7 @@ export const DEFAULT_SETTINGS: Settings = {
   syncEnabled: false,
   syncDir: '',
   syncSecrets: false,
+  customThemes: [],
 };
 
 export const DEFAULT_LOG_DIR = '~/Documents/Conduit Logs';
