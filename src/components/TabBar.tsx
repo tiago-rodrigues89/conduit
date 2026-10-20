@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Columns2, FolderTree, House, LoaderCircle, PanelLeft, Plus, Radio, Settings, SquareTerminal, X } from 'lucide-react';
 import { api } from '../lib/api';
+import { dnd } from '../lib/dnd';
 import type { Tab, TerminalTab } from '../lib/types';
 import {
   activateTab,
@@ -166,11 +167,13 @@ export function TabBar() {
               onDragStart={(e) => {
                 dragging.current = tab.id;
                 e.dataTransfer.setData(TAB_MIME, tab.id);
+                dnd.start({ kind: 'tab', id: tab.id });
                 e.dataTransfer.effectAllowed = 'move';
               }}
               onDragEnd={() => {
                 dragging.current = null;
                 setDropIndex(null);
+                dnd.end();
               }}
               onDragOver={(e) => {
                 if (!e.dataTransfer.types.includes(TAB_MIME)) return;

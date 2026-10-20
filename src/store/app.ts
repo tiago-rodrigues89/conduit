@@ -639,7 +639,7 @@ function localTerminal(cwd?: string): TerminalTab {
 }
 
 /** Opens a saved session the way its type needs: terminal tab, SFTP browser or external app. */
-export function openSession(sessionId: string, opts: { split?: SplitDir; activate?: boolean } = {}) {
+export function openSession(sessionId: string, opts: { split?: SplitDir; activate?: boolean; beside?: string; before?: boolean } = {}) {
   const session = sessionById(sessionId);
   if (!session) return;
   patchItem(sessionId, { lastUsed: Date.now() });
@@ -647,7 +647,7 @@ export function openSession(sessionId: string, opts: { split?: SplitDir; activat
   if (info.opens === 'sftp') return openSftp({ sessionId });
   if (info.opens === 'external') return launchExternal(session);
   const tab = terminalFor(session)!;
-  if (opts.split && placeInSplit(tab, opts.split, opts.activate)) return tab.id;
+  if (opts.split && placeInSplit(tab, opts.split, opts.activate, opts.beside, opts.before)) return tab.id;
   addTab(tab, opts.activate !== false);
   return tab.id;
 }
@@ -748,8 +748,8 @@ export function duplicateTab(id: string) {
 
 // ---- split panes -------------------------------------------------------------------------
 
-/** Puts a new terminal next to the focused pane of the active tab. */
-function placeInSplit(tab: TerminalTab, dir: SplitDir, activate = true, besideId?: string): boolean {
+/** Puts a new terminal next to a pane (default: the focused pane of the active tab). */
+function placeInSplit(tab: TerminalTab, dir: SplitDir, activate = true, besideId?: string, before = false): boolean {
   const s = get();
   const beside = s.tabs.find((t) => t.id === (besideId || s.activeTabId));
   if (!beside || beside.kind !== 'terminal') return false;
@@ -758,7 +758,7 @@ function placeInSplit(tab: TerminalTab, dir: SplitDir, activate = true, besideId
     tabs: [
       ...st.tabs.map((t) => {
         if (t.id !== rootId || t.kind !== 'terminal') return t;
-        return { ...t, layout: splitLeaf(t.layout || leaf(t.id), beside.id, tab.id, dir), zoomedPane: undefined, viewKey: t.viewKey || t.id };
+        return { ...t, layout: splitLeaf(t.layout || leaf(t.id), beside.id, tab.id, dir, before), zoomedPane: undefined, viewKey: t.viewKey || t.id };
       }),
       { ...tab, paneOf: rootId },
     ],
@@ -781,6 +781,49 @@ export function splitPane(id: string, dir: SplitDir) {
   // a new SSH pane starts in the folder the source pane is in
   if (t.mode === 'ssh' && t.cwd && t.integrated) pane.startIn = t.cwd;
   placeInSplit(pane, dir, true, id);
+}
+
+/** Can this tab be dragged into another tab as a split pane? (one terminal, not split) */
+export function canMoveIntoSplit(tabId: string, targetRootId: string) {
+  const t = get().tabs.find((x) => x.id === tabId);
+  return !!t && t.kind === 'terminal' && !t.paneOf && !t.layout && tabId !== targetRootId;
+}
+
+/**
+ * Moves a terminal tab into another tab as a split pane. The pane gets a new
+ * shell: on SSH it uses the same connection (no new login) in the same folder.
+ */
+export async function moveTabIntoSplit(tabId: string, besideId: string, dir: SplitDir, before = false): Promise<void> {
+  const t = get().tabs.find((x) => x.id === tabId);
+  if (!t || t.kind !== 'terminal' || !canMoveIntoSplit(tabId, rootOf(besideId))) return;
+  const session = sessionById(t.sessionId);
+  let pane: TerminalTab;
+  if (session && typeInfo(session.type).opens === 'terminal') pane = terminalFor(session)!;
+  else if (t.mode === 'ssh' && t.spec) pane = { id: uid(), kind: 'terminal', mode: 'ssh', title: t.title, spec: t.spec, status: 'connecting', generation: 0 };
+  else pane = localTerminal(t.cwd);
+  pane.title = t.title;
+  pane.color = t.color;
+  if (t.mode === 'local') pane.cwd = t.cwd;
+  if (t.mode === 'ssh' && t.status === 'connected' && t.connId) {
+    pane.shareConnId = t.connId;
+    if (t.cwd && t.integrated) pane.startIn = t.cwd;
+  }
+  if (t.mode === 'serial' || t.mode === 'telnet') {
+    // a serial port can only be open once: close first, then reopen in the split
+    await closeTab(tabId, true);
+    await new Promise((r) => setTimeout(r, 300));
+    placeInSplit(pane, dir, true, besideId, before);
+    return;
+  }
+  placeInSplit(pane, dir, true, besideId, before);
+  // the old tab goes away once the pane holds the connection, so no new login is needed
+  const t0 = Date.now();
+  while (Date.now() - t0 < 15000) {
+    const p = get().tabs.find((x) => x.id === pane.id);
+    if (!p || (p.kind === 'terminal' && p.status !== 'connecting')) break;
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  await closeTab(tabId, true);
 }
 
 export function focusPane(dir: 'left' | 'right' | 'up' | 'down') {

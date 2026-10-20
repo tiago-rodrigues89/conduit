@@ -3,6 +3,7 @@ import { ArrowRight, ChevronRight, FolderOpen, Plus, Search, UsersRound, X } fro
 import { api, type MenuItem } from '../lib/api';
 import { parseQuickConnect, uid } from '../lib/defaults';
 import { copyText } from '../lib/fileops';
+import { dnd } from '../lib/dnd';
 import { iconFor } from '../lib/icons';
 import { importFromMobaXterm, importFromSshConfig } from '../lib/importflow';
 import { sessionTarget, typeInfo } from '../lib/sessionTypes';
@@ -282,10 +283,13 @@ export function SessionTree() {
           dragId.current = item.id;
           e.dataTransfer.setData(TREE_MIME, item.id);
           e.dataTransfer.effectAllowed = 'move';
+          // a session can also be dropped onto a terminal to open it as a split pane
+          if (item.kind === 'session') dnd.start({ kind: 'session', id: item.id });
         }}
         onDragEnd={() => {
           dragId.current = null;
           setDrop(null);
+          dnd.end();
         }}
         onDragOver={(e) => onDragOver(e, item)}
         onDrop={(e) => drop && doDrop(e, drop.id, drop.pos)}

@@ -791,7 +791,7 @@ export function TerminalView({ tab, visible, focused, split, rect }: Props) {
   };
 
   return (
-    <div className={`terminal-pane${split ? ' split' : ''}${focused ? ' focused' : ''}`} style={style} onMouseDown={() => !focused && activateTab(tab.id, { pane: true })}>
+    <div className={`terminal-pane${split ? ' split' : ''}${focused ? ' focused' : ''}`} data-pane={tab.id} style={style} onMouseDown={() => !focused && activateTab(tab.id, { pane: true })}>
       <div
         ref={wrapRef}
         className={`terminal-wrap${bell ? ' bell' : ''}`}

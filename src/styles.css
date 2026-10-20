@@ -3586,3 +3586,28 @@ body.resizing-col * {
   background: rgba(255, 107, 129, 0.2);
   color: var(--danger);
 }
+
+/* where a dragged session or tab will open as a split */
+.pane-drop {
+  position: absolute;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border: 2px solid rgba(var(--accent-rgb), 0.8);
+  border-radius: 6px;
+  background: rgba(var(--accent-rgb), 0.14);
+  pointer-events: none;
+  transition: all 0.08s ease-out;
+}
+.pane-drop span {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(14, 17, 23, 0.9);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}

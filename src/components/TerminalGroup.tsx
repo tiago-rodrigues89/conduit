@@ -1,7 +1,24 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { dnd } from '../lib/dnd';
 import { dividers, paneRects, resizeAt, type Divider, type Rect } from '../lib/panes';
+import { typeInfo } from '../lib/sessionTypes';
 import type { TerminalTab } from '../lib/types';
-import { panesOf, updateTab, useApp } from '../store/app';
+import { canMoveIntoSplit, moveTabIntoSplit, openSession, panesOf, sessionById, updateTab, useApp } from '../store/app';
+
+type Side = 'left' | 'right' | 'top' | 'bottom';
+interface DropZone {
+  paneId: string;
+  side: Side;
+  label: string;
+}
+
+/** The half of a pane a drop lands in. */
+function zoneRect(r: Rect, side: Side): Rect {
+  if (side === 'left') return { ...r, w: r.w / 2 };
+  if (side === 'right') return { ...r, x: r.x + r.w / 2, w: r.w / 2 };
+  if (side === 'top') return { ...r, h: r.h / 2 };
+  return { ...r, y: r.y + r.h / 2, h: r.h / 2 };
+}
 import { ButtonBar } from './ButtonBar';
 import { ComposeBar } from './ComposeBar';
 import { HistoryPanel } from './HistoryPanel';
@@ -19,6 +36,7 @@ export function TerminalGroup({ root, active }: { root: TerminalTab; active: boo
   const buttonBarVisible = useApp((s) => s.settings.buttonBarVisible);
   const composeOpen = useApp((s) => s.compose.open);
   const areaRef = useRef<HTMLDivElement>(null);
+  const [drop, setDrop] = useState<DropZone | null>(null);
 
   const panes = panesOf(root.id, tabs);
   const ids = panes.map((p) => p.id);
@@ -28,10 +46,70 @@ export function TerminalGroup({ root, active }: { root: TerminalTab; active: boo
   const split = panes.length > 1 && !zoomed;
   const rects = root.layout ? paneRects(root.layout) : { [root.id]: FULL };
 
+  // drag a session from the sidebar (or a tab from the tab bar) onto a pane to split it
+  const dragLabel = () => {
+    const d = dnd.get();
+    if (!d) return null;
+    if (d.kind === 'session') {
+      const s = sessionById(d.id);
+      return s && typeInfo(s.type).opens === 'terminal' ? `Open “${s.name}” here` : null;
+    }
+    if (!canMoveIntoSplit(d.id, root.id)) return null;
+    const t = useApp.getState().tabs.find((x) => x.id === d.id);
+    return t ? `Move “${t.title}” here` : null;
+  };
+  /** The pane and its half under the pointer. */
+  const zoneAt = (e: React.DragEvent): DropZone | null => {
+    const label = dragLabel();
+    if (!label || zoomed) return null;
+    const el = (e.target as HTMLElement).closest('[data-pane]') as HTMLElement | null;
+    const paneId = el?.dataset.pane;
+    if (!el || !paneId) return null;
+    const r = el.getBoundingClientRect();
+    const fx = (e.clientX - r.left) / r.width;
+    const fy = (e.clientY - r.top) / r.height;
+    // the nearest edge wins
+    const dist: [Side, number][] = [
+      ['left', fx],
+      ['right', 1 - fx],
+      ['top', fy],
+      ['bottom', 1 - fy],
+    ];
+    const side = dist.sort((a, b) => a[1] - b[1])[0][0];
+    return { paneId, side, label };
+  };
+  const onDragOver = (e: React.DragEvent) => {
+    const zone = zoneAt(e);
+    if (!zone) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!drop || drop.paneId !== zone.paneId || drop.side !== zone.side || drop.label !== zone.label) setDrop(zone);
+  };
+  const onDrop = (e: React.DragEvent) => {
+    const d = dnd.get();
+    const zone = zoneAt(e) || drop;
+    setDrop(null);
+    if (!d || !zone) return;
+    e.preventDefault();
+    const dir = zone.side === 'left' || zone.side === 'right' ? 'row' : 'col';
+    const before = zone.side === 'left' || zone.side === 'top';
+    if (d.kind === 'session') openSession(d.id, { split: dir, beside: zone.paneId, before });
+    else moveTabIntoSplit(d.id, zone.paneId, dir, before);
+    dnd.end();
+  };
+
   return (
     <div className="terminal-view" style={{ display: active ? 'flex' : 'none' }}>
       <div className="terminal-row">
-        <div className={`pane-area${split ? ' split' : ''}`} ref={areaRef}>
+        <div
+          className={`pane-area${split ? ' split' : ''}`}
+          ref={areaRef}
+          onDragOver={onDragOver}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) setDrop(null);
+          }}
+          onDrop={onDrop}
+        >
           {panes.map((p) => (
             <TerminalView
               key={p.id}
@@ -45,6 +123,17 @@ export function TerminalGroup({ root, active }: { root: TerminalTab; active: boo
           {split &&
             root.layout &&
             dividers(root.layout).map((d) => <PaneDivider key={`${d.path.join('.')}:${d.index}`} d={d} rootId={root.id} areaRef={areaRef} />)}
+          {drop && rects[drop.paneId] && (
+            <div
+              className="pane-drop"
+              style={(() => {
+                const z = zoneRect(rects[drop.paneId], drop.side);
+                return { left: `${z.x * 100}%`, top: `${z.y * 100}%`, width: `${z.w * 100}%`, height: `${z.h * 100}%` };
+              })()}
+            >
+              <span>{drop.label}</span>
+            </div>
+          )}
         </div>
         {historyPanel && active && <HistoryPanel tab={focused} />}
       </div>

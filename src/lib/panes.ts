@@ -19,23 +19,26 @@ export function leafIds(node: PaneNode | undefined): string[] {
   return node.children.flatMap(leafIds);
 }
 
-/** Splits the pane `target` and puts `newId` to its right ('row') or below it ('col'). */
-export function splitLeaf(node: PaneNode, target: string, newId: string, dir: SplitDir): PaneNode {
+/**
+ * Splits the pane `target` and puts `newId` to its right ('row') or below it
+ * ('col'), or to its left / above it with `before`.
+ */
+export function splitLeaf(node: PaneNode, target: string, newId: string, dir: SplitDir, before = false): PaneNode {
   if (node.type === 'leaf') {
     if (node.id !== target) return node;
-    return { type: 'split', dir, children: [node, leaf(newId)], sizes: [0.5, 0.5] };
+    return { type: 'split', dir, children: before ? [leaf(newId), node] : [node, leaf(newId)], sizes: [0.5, 0.5] };
   }
   const idx = node.children.findIndex((c) => c.type === 'leaf' && c.id === target);
   if (idx !== -1 && node.dir === dir) {
     // same direction: add a sibling and share the target's space with it
     const children = [...node.children];
-    children.splice(idx + 1, 0, leaf(newId));
+    children.splice(before ? idx : idx + 1, 0, leaf(newId));
     const sizes = [...node.sizes];
     const half = sizes[idx] / 2;
     sizes.splice(idx, 1, half, half);
     return { ...node, children, sizes };
   }
-  return { ...node, children: node.children.map((c) => splitLeaf(c, target, newId, dir)) };
+  return { ...node, children: node.children.map((c) => splitLeaf(c, target, newId, dir, before)) };
 }
 
 /** Removes a pane; a split left with one child collapses into it. */

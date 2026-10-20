@@ -2,6 +2,11 @@
 
 Versions follow [semantic versioning](https://semver.org): new features raise the middle number, fixes the last one.
 
+## 1.8.0
+- Drag a session from the sidebar onto a terminal to open it as a split: the half you drop on (left, right, top, bottom) is where it opens, with a preview while dragging
+- Drag a tab onto another tab's terminal to move it in as a split pane (SSH keeps its connection, no new login; same folder)
+- Builds are signed with the local "Conduit Local Signing" certificate, so the keychain question stays answered across updates
+
 ## 1.7.0
 - Undo splits: “Back to One Pane” in the tab's right-click menu, the terminal's right-click menu and Window → Close Other Panes (⌥⌘W) keeps the pane you are in and closes the others
 - A × after each pane's name closes just that pane (3 panes → 2)
