@@ -28,6 +28,10 @@ console.log(
     ? `Signing with "${pick}"${/^(Developer ID|Apple Development)/.test(pick) ? '' : ' (no Team ID: macOS asks for keychain access once after each update)'}`
     : 'No signing certificate found — signing ad hoc (macOS asks for keychain access after each update)'
 );
-const args = ['electron-builder', '--mac', '--arm64', ...(pick ? [`-c.mac.identity=${pick.replace(/^(Developer ID Application|Apple Development): /, '')}`] : [])];
+// electron-builder wants the name without the "Developer ID Application:" / "Apple Development:" prefix,
+// and the "development" type for Apple Development certificates
+const args = ['electron-builder', '--mac', '--arm64'];
+if (pick) args.push(`-c.mac.identity=${pick.replace(/^(Developer ID Application|Apple Development): /, '')}`);
+if (pick && pick.startsWith('Apple Development:')) args.push('-c.mac.type=development');
 const res = spawnSync('npx', args, { stdio: 'inherit' });
 process.exit(res.status ?? 1);
