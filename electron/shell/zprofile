@@ -1,0 +1,6 @@
+# Conduit: load your own .zprofile
+if [[ -o login && -f $CONDUIT_USER_ZDOTDIR/.zprofile ]]; then
+  ZDOTDIR=$CONDUIT_USER_ZDOTDIR
+  source $ZDOTDIR/.zprofile
+  ZDOTDIR=$__conduit_zdot
+fi

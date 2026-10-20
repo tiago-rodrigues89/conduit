@@ -1,0 +1,39 @@
+# Changelog
+
+Versions follow [semantic versioning](https://semver.org): new features raise the middle number, fixes the last one.
+
+## 1.5.0
+- Split panes: ⌘D right, ⇧⌘D down, ⌥⌘arrows to move, ⇧⌘↩ to maximize, drag the dividers. An SSH split opens a new shell on the same connection (no second login) in the same folder
+- Button bar under the terminal (SecureCRT-style): one-click commands, several bars (e.g. Linux, Cisco), per-session bar, ⌥-click sends to all panes
+- Compose bar (⇧⌘E, hidden by default): write a command and send it to this terminal, all panes of the tab, all terminals or picked ones
+- Session logging to files: off by default, per session or by hand (⌥⌘L), clean text or raw, optional timestamps, own folder and file name pattern
+- Triggers (notify, mark the tab, type an answer) and per-session login scripts (wait for text → type answer)
+- Workspaces: named sets of sessions in tabs and splits, opened from Home or automatically at start
+- Export/import backup (passwords only inside a passphrase-encrypted file), export SSH sessions as OpenSSH config
+- Sync between Macs without an account: one encrypted file in iCloud Drive, Dropbox or any folder
+- Duplicate Tab moved to ⌥⌘D; ⌘W closes the focused pane of a split tab, ⇧⌘W the whole tab
+
+## 1.4.0
+- Home screen redesigned as a keyboard-first launcher (search sessions, `user@host`, actions), pinned and recent sessions
+- Server monitoring: responsive status bar, hover card with CPU/network graphs, memory, swap, disk
+- Fixes: byte values below 1 KB were not rounded; status bar buttons could be pushed out of narrow windows
+- Build signs with a local "Conduit Local Signing" certificate when present (keychain prompt stays away across updates)
+
+## 1.3.0
+- Server monitoring in the status bar (OS, CPU, RAM, disk, network, uptime)
+- Command history panel (this session + server history)
+- Sidebar follows the tabs (Files for SSH, Sessions for Home), manual choice remembered per tab
+
+## 1.2.0
+- Saved logins (credentials) shared by many sessions
+- Show-password buttons, saved passwords revealed after Touch ID
+- New prompt styles without the box (Conduit, Frame, Minimal)
+- "Browse as root (sudo)" in the Files panel, "Go there / Follow" bar
+
+## 1.1.0
+- MobaXterm-style session tree with "User sessions" root, folder icons and colors, Move To
+- New-session wizard with templates: SSH, SFTP, Local shell, Telnet, Serial, RDP, VNC, AWS EC2, AWS SSM, Command
+- Conduit prompt for local shells and SSH servers
+
+## 1.0.0
+- First version: SSH terminal, SFTP panel and dual-pane browser, sessions in folders, highlighting, tunnels, importers

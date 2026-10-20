@@ -1,0 +1,11 @@
+# Conduit: behave like a login shell, then add Conduit's prompt
+[ -f /etc/profile ] && . /etc/profile
+if [ -f ~/.bash_profile ]; then . ~/.bash_profile
+elif [ -f ~/.bash_login ]; then . ~/.bash_login
+elif [ -f ~/.profile ]; then . ~/.profile
+fi
+[ ! -f ~/.bash_profile ] && [ -f ~/.bashrc ] && . ~/.bashrc
+__conduit_style=${CONDUIT_PROMPT:-conduit}
+unset CONDUIT_PROMPT
+. "$CONDUIT_SHELL_DIR/integration.bash"
+unset CONDUIT_SHELL_DIR

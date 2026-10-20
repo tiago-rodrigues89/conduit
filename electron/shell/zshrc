@@ -1,0 +1,9 @@
+# Conduit: load your own .zshrc, then Conduit's prompt.
+# From here on ZDOTDIR is yours again (also for .zlogin and child shells).
+[[ $HISTFILE == $__conduit_zdot/.zsh_history ]] && HISTFILE=$CONDUIT_USER_ZDOTDIR/.zsh_history
+ZDOTDIR=$CONDUIT_USER_ZDOTDIR
+unset CONDUIT_USER_ZDOTDIR
+[[ -f $ZDOTDIR/.zshrc ]] && source $ZDOTDIR/.zshrc
+__conduit_style=${CONDUIT_PROMPT:-conduit}
+unset CONDUIT_PROMPT
+source "${__conduit_zdot}/integration.zsh"

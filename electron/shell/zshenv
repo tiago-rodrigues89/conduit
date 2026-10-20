@@ -1,0 +1,8 @@
+# Conduit: load your own .zshenv first
+__conduit_zdot=$ZDOTDIR
+if [[ -n $CONDUIT_USER_ZDOTDIR ]]; then
+  ZDOTDIR=$CONDUIT_USER_ZDOTDIR
+  [[ -f $ZDOTDIR/.zshenv && $ZDOTDIR != $__conduit_zdot ]] && source $ZDOTDIR/.zshenv
+  CONDUIT_USER_ZDOTDIR=$ZDOTDIR
+  ZDOTDIR=$__conduit_zdot
+fi
